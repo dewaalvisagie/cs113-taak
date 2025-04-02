@@ -228,6 +228,7 @@ def print_pattern(pattern):
             stdio.write(value)
             stdio.write(" ")  # Add space between values
         stdio.writeln()
+        
 # Main is only for testing
 if __name__ == "__main__":
     sizeofpospat = int(sys.argv[1])
@@ -236,6 +237,7 @@ if __name__ == "__main__":
     
     stdio.writeln(sizeofpospat)
     printQR(addPospatToQR(sizeofpospat,sizeofQRcode,sizeofAllPat))
+    # hierso is my nuwe additions
     
 
 
