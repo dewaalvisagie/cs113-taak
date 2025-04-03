@@ -236,6 +236,7 @@ if __name__ == "__main__":
     
     stdio.writeln(sizeofpospat)
     printQR(addPospatToQR(sizeofpospat,sizeofQRcode,sizeofAllPat))
+    # test
     
 
 
