@@ -12,7 +12,12 @@ def printQR(pospattern):
         stdio.writeln()
     
 # ______________________________Validation Checks______________________________
-
+def isinteger(value):
+    try:
+        int(value)  # Try converting to an integer
+        return True
+    except ValueError:
+        return False
 
 
 def validateInput(Encodingparm, sizeOfQRCode, sizeOfPospat, sizeOfAlignmentPat):
@@ -20,7 +25,25 @@ def validateInput(Encodingparm, sizeOfQRCode, sizeOfPospat, sizeOfAlignmentPat):
     if Encodingparm == None or sizeOfQRCode == None or sizeOfPospat == None or sizeOfAlignmentPat == None:
         stdio.writeln("ERROR: Too few arguments")
         return False
+    if not isinteger(Encodingparm):
+        stdio.writeln("ERROR: Invalid encoding argument: "+Encodingparm)
+        return False
+    if not isinteger(sizeOfQRCode):
+        stdio.writeln("ERROR: Invalid size argument: "+sizeOfQRCode)
+        return False
+    if not isinteger(sizeOfPospat):
+        stdio.writeln("ERROR: Invalid position pattern size argument: "+sizeOfPospat)
+        return False
+    if not isinteger(sizeOfAlignmentPat):
+        stdio.writeln("ERROR: Invalid alignment pattern size argument: "+sizeOfAlignmentPat)
+        return False
+    # making the variables ints so other validations can happen 
+    Encodingparm = int(Encodingparm)
+    sizeOfQRCode = int(sizeOfQRCode)
+    sizeOfAlignmentPat= int(sizeOfAlignmentPat)
+    sizeOfPospat = int(sizeOfPospat)
     expectedargs = 4
+    
     if len(sys.argv) != expectedargs+1:
         stdio.writeln("ERROR: Too many arguments")
         return False
@@ -33,28 +56,47 @@ def validateInput(Encodingparm, sizeOfQRCode, sizeOfPospat, sizeOfAlignmentPat):
         stdio.writeln("ERROR: Invalid position pattern size argument: " + str(sizeOfPospat))
         return False
     if sizeOfPospat > sizeOfQRCode:
-        stdio.writeln("ERROR: Position pattern size is too large for QR code size")
+        stdio.writeln("ERROR: Invalid position pattern size argument: "+str(sizeOfPospat))
+        return False
+    if sizeOfPospat*2 >= sizeOfQRCode:
+        stdio.writeln("ERROR: Alignment/position pattern out of bounds")
         return False
     #__________Validating sizeofallignmentpattern_____________
     if sizeOfAlignmentPat < 1 or (sizeOfAlignmentPat - 1) % 4 != 0: #not in the patttern 1 5 9 13 ...
+        stdio.writeln("ERROR: Invalid alignment pattern size argument: "+str(sizeOfAlignmentPat))
+        return False
+    if sizeOfAlignmentPat >= sizeOfQRCode:
+        stdio.writeln("ERROR: Invalid alignment pattern size argument: "+str(sizeOfAlignmentPat))
+        return False
+    if sizeOfQRCode - sizeOfPospat - 1 < sizeOfAlignmentPat:
+        stdio.writeln("ERROR: Invalid alingment pattern argument: "+str(sizeOfAlignmentPat))
+        return False
+    start_x = sizeOfQRCode - sizeOfPospat - 1
+    start_y = sizeOfQRCode - sizeOfPospat - 1
+
+    if start_x + sizeOfAlignmentPat > sizeOfQRCode or start_y + sizeOfAlignmentPat > sizeOfQRCode:# if the alignment pattern does overlap with any of the pp or goes out of bounds.
+        stdio.writeln("ERROR: Invalid alignment pattern arugment: "+str(sizeOfAlignmentPat))
         return False
     
-    
-
+    #___________________Encoding paramater validation______________________________________
     if Encodingparm<0 or Encodingparm>32:
         stdio.writeln("ERROR: Invalid encoding argument: "+str(encodingparm))
         return False
+    
     return True
 # __________________________Build QR components______________________
 
 #__________________________Making the snake pattern______________________________
 
 
+    
+
 
 
 # This is the main function that generates the 
 # pospat for the QR code
 def genBasePosPat(inputArray, n):
+    n = int(n)
     offset = n - 4
     if offset < 0:
         offset = 0
@@ -72,6 +114,7 @@ def genBasePosPat(inputArray, n):
     
 # this function is used to determine the offset of the position pattern
 def countUnevenAfter5(target):
+    target = int(target)
     offset = 0
     for i in range(5, target+1):
         if(i % 2 != 0):
@@ -126,10 +169,11 @@ def buildRight(inputArray):
     return newArray
 
 def buildToTargetPosPat(n):
+    n  = int(n)
     baseVal = 4
     pospattern = stdarray.create2D(baseVal,baseVal,0)
     currentPosPat = genBasePosPat(pospattern,baseVal)
-
+    n = int(n)
     for i in range(5, n+1):
         if (i % 2) == 0:
             currentPosPat = buildRight(currentPosPat)
@@ -139,32 +183,38 @@ def buildToTargetPosPat(n):
     return currentPosPat
 
 def MakeCleanQR(size):
+    size = int(size)
+    
     CleanQR = stdarray.create2D(size,size,0) #Makes a clean array of size n that we are going to populate with the other elements.
     return CleanQR
 
-def reflect_x_axis(matrix):
-    """Reflects an nxn 2D array along the x-axis using only array operations."""
-    n = len(matrix)
+def reflect_x_axis(array):
+    
+    n = len(array)
     reflected = stdarray.create2D(n, n, 0)  # Create an empty nxn array
 
     for i in range(n):
         for j in range(n):
-            reflected[i][j] = matrix[n - 1 - i][j]  # Swap rows
+            reflected[i][j] = array[n - 1 - i][j]  # Swap rows
 
     return reflected
 
-def reflect_y_axis(matrix):
-    """Reflects an nxn 2D array along the y-axis using only array operations."""
-    n = len(matrix)
+def reflect_y_axis(array):
+    
+    n = len(array)
     reflected = stdarray.create2D(n, n, 0)  # Create an empty nxn array
 
     for i in range(n):
         for j in range(n):
-            reflected[i][j] = matrix[i][n - 1 - j]  # Swap columns
+            reflected[i][j] = array[i][n - 1 - j]  # Swap columns
 
     return reflected
 
 def addPospatToQR(size , n, alsize):
+    
+    size = int(size)
+    n = int(n)
+    alsize = int(alsize)
     pospat = buildToTargetPosPat(n)  # n is the size of the position pattern. size is the size of the QR code.
     pospatpopRight = MakeCleanQR(size)#makes a clean qr code of the correct size.
     j = 0
@@ -204,7 +254,7 @@ def addPospatToQR(size , n, alsize):
 # __________________End of QR component generation______________________
 
 def MakeAlignmentPattern(alpatsize):
-
+    alpatsize = int(alpatsize)
     Alignmentpat = stdarray.create2D(alpatsize, alpatsize, 1)  # Initialize with 1s
 
     # Create alternating square pattern
@@ -219,16 +269,20 @@ def MakeAlignmentPattern(alpatsize):
         
 # Main is only for testing
 if __name__ == "__main__":
-    if len(sys.argv) != 5:
-        stdio.writeln("ERROR: Incorrect number of arguments. Usage: python script.py <encodingparm> <sizeOfQRCode> <sizeOfPospat> <sizeOfAlignmentPat>")
+    if len(sys.argv) < 5:
+        stdio.writeln("ERROR: Too few arguments ")
         sys.exit(1)
+    if len(sys.argv) > 5:
+        stdio.writeln("ERROR: Too many arguments ")
+        sys.exit(1)
+    encodingparm = sys.argv[1]
+    sizeOfQRCode = sys.argv[2]
+    sizeOfPospat = sys.argv[3]
+    sizeOfAlignmentPat = sys.argv[4]
+    
 
-    encodingparm = int(sys.argv[1])
-    sizeOfQRCode = int(sys.argv[2])
-    sizeOfPospat = int(sys.argv[3])
-    sizeOfAlignmentPat = int(sys.argv[4])
 
-    stdio.writeln(encodingparm)
+    #stdio.writeln(encodingparm)
 
     if not validateInput(encodingparm, sizeOfQRCode, sizeOfPospat, sizeOfAlignmentPat):
         sys.exit(1)
