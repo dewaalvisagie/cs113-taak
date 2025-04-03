@@ -234,7 +234,7 @@ if __name__ == "__main__":
     sizeofQRcode = int(sys.argv[2])
     sizeofAllPat = int(sys.argv[3])
     
-    stdio.writeln(sizeofpospat)
+    # stdio.writeln(sizeofpospat)
     printQR(addPospatToQR(sizeofpospat,sizeofQRcode,sizeofAllPat))
     # test
     
