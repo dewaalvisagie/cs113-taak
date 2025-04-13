@@ -21,7 +21,7 @@ def isinteger(value):
         return False
 
 #validates all possible negative inputs from the user and gives outputs regarding that.
-def validateInput(Encodingparm, sizeOfQRCode, sizeOfPospat, sizeOfAlignmentPat):
+def validateInput(Encodingparm, sizeOfQRCode, sizeOfPospat, sizeOfAlignmentPat,message):
     #________ValidatingSizeOfQRCode___________
     if Encodingparm == None or sizeOfQRCode == None or sizeOfPospat == None or sizeOfAlignmentPat == None:
         stdio.writeln("ERROR: Too few arguments")
@@ -83,8 +83,13 @@ def validateInput(Encodingparm, sizeOfQRCode, sizeOfPospat, sizeOfAlignmentPat):
     if Encodingparm<0 or Encodingparm>32:
         stdio.writeln("ERROR: Invalid encoding argument: "+str(encodingparm))
         return False
+    #bitsequence = encode_message(message)
     
     return True
+
+
+
+
 
 #__________________________Making the snake pattern______________________________
 def encode_message(message,sizeOfQRCode,sizeOfPospat,sizeOfAlingmentpats):
@@ -114,7 +119,8 @@ def encode_message(message,sizeOfQRCode,sizeOfPospat,sizeOfAlingmentpats):
 
     # Ensure the message fits within the QR code
     if len(bit_sequence) > calculate_available_space(sizeOfQRCode,sizeOfPospat,sizeOfAlignmentPat):
-        raise ValueError("Encoded message is too large for the given QR code size!")
+        stdio.writeln("Encoded message is too large for the given QR code size!")
+        sys.exit(1)
 
     # Step 5: Add padding bits
     padding_bits = ["11101100", "00010001"]
@@ -159,9 +165,72 @@ def insert_snake_pattern(qr_matrix, bit_sequence):
                     qr_matrix[row][col] = bit_sequence[tracker]
                     tracker +=1
     return qr_matrix
+def GetReservedCells(sizeofqrcode, sizeofpospat, sizeofalpat):
+    reservedcells = stdarray.create2D(sizeofqrcode, sizeofqrcode, False)
 
+    # Top-left
+    for i in range(sizeofpospat):
+        for j in range(sizeofpospat):
+            reservedcells[i][j] = True
+
+    # Top-right
+    for i in range(sizeofpospat):
+        for j in range(sizeofpospat):
+            reservedcells[i][sizeofqrcode - sizeofpospat + j] = True
+
+    # Bottom-left
+    for i in range(sizeofpospat):
+        for j in range(sizeofpospat):
+            reservedcells[sizeofqrcode - sizeofpospat + i][j] = True
+
+    # Alignment pattern
+    start = sizeofqrcode - sizeofpospat - 1
+    for i in range(sizeofalpat):
+        for j in range(sizeofalpat):
+            reservedcells[start + i][start + j] = True
+
+    return reservedcells
+def maskThePattern(QRCodewithsnake, encodingparm, reserved_cells):
+    if encodingparm == 0:
+        return QRCodewithsnake  # No mask
+
+    size = len(QRCodewithsnake)
+
+    row = 0
+    while row < size:
+        col = 0
+        while col < size:
+            if reserved_cells[row][col] == False:
+                val = QRCodewithsnake[row][col]
+                if val == '0' or val == '1':
+                    should_flip = False
+
+                    # Mask pattern 001
+                    if encodingparm == 1:
+                        if row % 2 == 0:
+                            should_flip = True
+
+                    # Mask pattern 010
+                    elif encodingparm == 2:
+                        if col % 3 == 0:
+                            should_flip = True
+
+                    # Mask pattern 011
+                    elif encodingparm == 3:
+                        if (row + col) % 3 == 0:
+                            should_flip = True
+
+                    # Flip bit if needed
+                    if should_flip == True:
+                        if val == '0':
+                            QRCodewithsnake[row][col] = '1'
+                        else:
+                            QRCodewithsnake[row][col] = '0'
+            col += 1
+        row += 1
+
+    return QRCodewithsnake
     
-
 
 #_________________________Finished with the snake pattern______________________________
 
@@ -171,7 +240,6 @@ def insert_snake_pattern(qr_matrix, bit_sequence):
 
 
 # __________________________Build QR components______________________
-
 # This is the main function that generates the 
 # pospat for the QR code
 def genBasePosPat(inputArray, n):
@@ -261,19 +329,19 @@ def buildToTargetPosPat(n):
 
     return currentPosPat
 
-def MakeAlignmentPattern(alpatsize):
-    alpatsize = int(alpatsize)
-    Alignmentpat = stdarray.create2D(alpatsize, alpatsize, 1)  # Initialize with 1s
+def make_alignment_pattern(align_square_size):
+    pattern = stdarray.create2D(align_square_size, align_square_size, 0)
+    layers = align_square_size // 2 + 1
 
-    # Create alternating square pattern
-    for layer in range(1, alpatsize // 2, 2):  # Step by 2 to maintain the pattern
-        for i in range(layer, alpatsize - layer):
-            for j in range(layer, alpatsize - layer):
-                if (i == layer or i == alpatsize - layer - 1 or
-                    j == layer or j == alpatsize - layer - 1):
-                    Alignmentpat[i][j] = 0
+    for layer in range(layers):
+        val = 1 if layer % 2 == 0 else 0
+        for i in range(layer, align_square_size - layer):
+            pattern[layer][i] = val                    # top row
+            pattern[align_square_size - layer - 1][i] = val  # bottom row
+            pattern[i][layer] = val                    # left col
+            pattern[i][align_square_size - layer - 1] = val  # right col
 
-    return Alignmentpat
+    return pattern
 
 def MakeCleanQR(size):
     size = int(size)
@@ -334,7 +402,7 @@ def addPospatToQR(size , n, alsize):
             pospatpopRight[i][len(pospatpopRight) - len(pospat) + j] = pospat[i][j]
 
     # ADD THE ALIGNMENT PATTERN TO THE CORRECT POSITION
-    alignmentpat = MakeAlignmentPattern(alsize)
+    alignmentpat = make_alignment_pattern(alsize)
     start_x = size - n - 1
     start_y = size - n - 1
 
@@ -361,11 +429,12 @@ if __name__ == "__main__":
     sizeOfPospat = sys.argv[3]
     sizeOfAlignmentPat = sys.argv[4]
     
-    message = "123456"
+    message = stdio.readAll()
+    message = message.rstrip("\n")
 
     
 
-    if not validateInput(encodingparm, sizeOfQRCode, sizeOfPospat, sizeOfAlignmentPat):
+    if not validateInput(encodingparm, sizeOfQRCode, sizeOfPospat, sizeOfAlignmentPat,message):
         sys.exit(1)
         # pass
     else:
@@ -376,8 +445,17 @@ if __name__ == "__main__":
         
         #printQR(InsertSnakeIntoQR(addPospatToQR(sizeOfQRCode,sizeOfPospat, sizeOfAlignmentPat),encode_message(message,sizeOfQRCode,sizeOfPospat,sizeOfAlignmentPat),sizeOfPospat,sizeOfAlignmentPat,sizeOfQRCode))  # Corrected order
         bitsequence  = encode_message(message,sizeOfQRCode,sizeOfPospat,sizeOfAlignmentPat)
-        QRCodewithoutsnake = addPospatToQR(sizeOfQRCode,sizeOfPospat,sizeOfAlignmentPat)
-        pospat = buildToTargetPosPat(sizeOfPospat)
-        alpat = MakeAlignmentPattern(sizeOfAlignmentPat)
         #stdio.writeln(bitsequence)
-        printQR(insert_snake_pattern(QRCodewithoutsnake,bitsequence))
+        QRCodewithoutsnake = addPospatToQR(sizeOfQRCode,sizeOfPospat,sizeOfAlignmentPat)
+       # printQR(QRCodewithoutsnake)
+        pospat = buildToTargetPosPat(sizeOfPospat)
+        #printQR(pospat)
+        alpat = make_alignment_pattern(sizeOfAlignmentPat)
+        #printQR(alpat)
+        QRCodeWithSnake = insert_snake_pattern(QRCodewithoutsnake,bitsequence)
+        #printQR(QRCodeWithSnake)
+        reserved_cells =GetReservedCells(sizeOfQRCode, sizeOfPospat, sizeOfAlignmentPat)
+        #printQR(reserved_cells)
+        QRCodeMasked = maskThePattern(QRCodeWithSnake, encodingparm, reserved_cells)
+        
+        printQR(QRCodeMasked)
